@@ -36,7 +36,7 @@ if (isGitHubPages) {
   AUTH_REDIRECT_URL = `${API_URL}/auth/callback`;
 }
 
-// Конфигурация для Shikimori OAuth
+// Конфигурация для Shikimori OAuth - убедимся, что Redirect URI корректно определен
 const SHIKIMORI_CONFIG = {
   CLIENT_ID: 'XpCddxtIwd3GA26uhftF-EFxEaSXG-bsUosO9ll65mQ',
   REDIRECT_URI: AUTH_REDIRECT_URL

@@ -14,9 +14,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_ID
-        sync: false
+        value: XpCddxtIwd3GA26uhftF-EFxEaSXG-bsUosO9ll65mQ
       - key: CLIENT_SECRET
         sync: false
+      - key: PORT 
+        value: 10000
       - key: RENDER_EXTERNAL_URL
         fromService:
           name: animelove

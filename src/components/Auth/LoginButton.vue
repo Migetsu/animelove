@@ -5,7 +5,12 @@
     <span v-if="!isLoading">Войти через Shikimori</span>
     <span v-else>{{ statusMessage }}</span>
   </button>
-  <div v-if="error" class="login-error">{{ error }}</div>
+  <div v-if="error" class="login-error">
+    <p>{{ error }}</p>
+    <button v-if="showRetryButton" @click="login" class="login-retry-button">
+      Попробовать снова
+    </button>
+  </div>
 </template>
 
 <script setup>
@@ -13,12 +18,14 @@ import { ref } from 'vue';
 import config from '@/config.js';
 
 const isLoading = ref(false);
-const statusMessage = ref('Проверка сервера...');
+const statusMessage = ref('Подготовка...');
 const error = ref(null);
+const showRetryButton = ref(false);
 
 async function login() {
   isLoading.value = true;
   error.value = null;
+  showRetryButton.value = false;
   
   try {
     const CLIENT_ID = config.SHIKIMORI_CONFIG.CLIENT_ID;
@@ -30,26 +37,38 @@ async function login() {
     
     // Для GitHub Pages проверяем доступность Render API
     if (config.isGitHubPages) {
-      statusMessage.value = 'Проверка доступности Render сервера...';
+      statusMessage.value = 'Проверка доступности сервера...';
       
       try {
-        // Тестовый запрос для проверки доступности API
+        // Тестовый запрос для проверки доступности API с увеличенным таймаутом
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         const response = await fetch(`${config.API_URL}/api/status`, { 
           method: 'GET',
+          signal: controller.signal,
           mode: 'cors',
           headers: { 'Accept': 'application/json' }
         });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           const data = await response.json();
           console.log('Render API доступен:', data);
         } else {
           console.warn('Render API ответил с ошибкой:', response.status);
+          throw new Error(`Сервер авторизации вернул ошибку: ${response.status}`);
         }
       } catch (error) {
         console.warn('Предупреждение: Render API не доступен:', error);
-        // Продолжаем работу даже при недоступности API
-        // Соединение будет установлено при редиректе на Shikimori
+        
+        // Продолжаем работу даже при недоступности API, но показываем предупреждение
+        error.value = `Сервер авторизации может быть недоступен. Авторизация может не работать. (${error.message})`;
+        showRetryButton.value = true;
+        
+        // Даем пользователю прочитать сообщение перед тем, как продолжить
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
     // Для локальной разработки проверяем доступность локального сервера
@@ -93,7 +112,7 @@ async function login() {
     
     // Проверяем наличие CLIENT_ID
     if (!CLIENT_ID) {
-      throw new Error('CLIENT_ID не настроен. Обновите файл .env и запустите команду "npm run setup-env"');
+      throw new Error('CLIENT_ID не настроен. Обратитесь к администратору.');
     }
     
     const authUrl = `https://shikimori.one/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=user_rates+comments+topics`;
@@ -103,7 +122,7 @@ async function login() {
   } catch (error) {
     console.error('Ошибка:', error);
     error.value = `Ошибка при авторизации: ${error.message}`;
-  } finally {
+    showRetryButton.value = true;
     isLoading.value = false;
   }
 }
@@ -141,5 +160,20 @@ async function login() {
   margin-top: 8px;
   font-size: 14px;
   max-width: 300px;
+}
+
+.login-retry-button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background-color: #616161;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.login-retry-button:hover {
+  background-color: #757575;
 }
 </style>

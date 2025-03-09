@@ -55,7 +55,20 @@ onMounted(async () => {
     const routeError = route.query.error;
     
     if (routeError) {
-      throw new Error(`Ошибка авторизации: ${routeError}. ${route.query.message || ''}`);
+      // Добавляем более подробную информацию об ошибке
+      let errorMessage = `Ошибка авторизации: ${routeError}.`;
+      
+      if (routeError === 'timeout') {
+        errorMessage = 'Превышено время ожидания ответа от Shikimori API. Сервер может быть перегружен или недоступен.';
+      } else if (routeError === 'token_error') {
+        errorMessage = 'Ошибка получения токена доступа. Проверьте настройки приложения.';
+      }
+      
+      if (route.query.message) {
+        errorMessage += ` ${route.query.message}`;
+      }
+      
+      throw new Error(errorMessage);
     }
     
     if (!code) {
@@ -86,8 +99,11 @@ onMounted(async () => {
       
       // Добавляем таймаут для предотвращения быстрых отказов
       const response = await axios.post(tokenUrl, { code }, { 
-        timeout: 10000, 
-        headers: { 'Content-Type': 'application/json' } 
+        timeout: 30000, // Увеличиваем таймаут до 30 секунд
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        } 
       });
       
       if (!response.data || !response.data.access_token) {
@@ -131,7 +147,15 @@ onMounted(async () => {
       };
       
       diagnosticInfo.value.apiError = errorDetails;
-      throw new Error(`Ошибка API: ${apiError.message}. ${apiError.response?.data?.error || 'Проверьте CLIENT_SECRET в файле .env'}`);
+      
+      // Добавляем проверку на ошибку сети или таймаут
+      if (apiError.code === 'ECONNABORTED') {
+        throw new Error(`Тайм-аут при соединении с API. Сервер может быть перегружен. Попробуйте повторить позже.`);
+      } else if (!apiError.response) {
+        throw new Error(`Ошибка сети при соединении с API. Проверьте подключение к интернету.`);
+      }
+      
+      throw new Error(`Ошибка API: ${apiError.message}. ${apiError.response?.data?.error || 'Проверьте настройки приложения'}`);
     }
   } catch (err) {
     console.error("Ошибка авторизации:", err);
@@ -155,9 +179,14 @@ onMounted(async () => {
             <h3>Диагностическая информация:</h3>
             <pre>{{ JSON.stringify(diagnosticInfo, null, 2) }}</pre>
           </div>
-          <button @click="$router.push('/')" class="auth-callback__button">
-            Вернуться на главную
-          </button>
+          <div class="auth-callback__actions">
+            <button @click="$router.push('/')" class="auth-callback__button">
+              Вернуться на главную
+            </button>
+            <button @click="window.location.reload()" class="auth-callback__button auth-callback__button--secondary">
+              Повторить попытку
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -215,6 +244,22 @@ onMounted(async () => {
   border-radius: 5px;
   padding: 10px 20px;
   cursor: pointer;
+}
+
+.auth-callback__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.auth-callback__button--secondary {
+  background-color: #616161;
+}
+
+.auth-callback__button--secondary:hover {
+  background-color: #757575;
 }
 
 pre {

@@ -150,7 +150,7 @@ app.get("/auth/process", async (req, res) => {
         redirect_uri: REDIRECT_URI,
       });
       
-      // ИСПРАВЛЕНИЕ: Используем URL-encoded формат вместо JSON
+      // ИСПРАВЛЕНИЕ: Используем URL-encoded формат с повышенными таймаутами
       const params = new URLSearchParams();
       params.append('grant_type', 'authorization_code');
       params.append('client_id', CLIENT_ID);
@@ -159,10 +159,14 @@ app.get("/auth/process", async (req, res) => {
       params.append('redirect_uri', REDIRECT_URI);
       
       const response = await axios.post("https://shikimori.one/oauth/token", params, {
+        timeout: 30000, // Увеличиваем таймаут до 30 секунд
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/json',
+          'User-Agent': 'AnimeRealm/1.0 (https://github.com/Migetsu/animelove)'
+        },
+        maxRedirects: 5,
+        validateStatus: status => status < 500 // Принимаем любой статус < 500
       });
       
       console.log("Токен успешно получен, данные ответа:");
@@ -182,13 +186,13 @@ app.get("/auth/process", async (req, res) => {
     } catch (error) {
       console.error("Ошибка при обмене кода на токен:", error.response?.data || error.message);
       console.error("Запрос был отправлен на:", "https://shikimori.one/oauth/token");
-      console.error("С параметрами:", {
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET ? "***SECRET***" : "MISSING",
-        code,
-        redirect_uri: REDIRECT_URI,
-      });
+      console.error("Статус:", error.response?.status);
+      console.error("Заголовки ответа:", error.response?.headers);
+      
+      // Проверяем, не связана ли проблема с таймаутом или сетью
+      if (error.code === 'ECONNABORTED' || !error.response) {
+        return res.redirect(`${redirect || `${GITHUB_PAGES_URL}/#/auth/callback`}?error=timeout&message=${encodeURIComponent('Timeout connecting to Shikimori API')}`);
+      }
       
       return res.redirect(`${redirect || `${GITHUB_PAGES_URL}/#/auth/callback`}?error=token_error&message=${encodeURIComponent(error.message)}`);
     }
@@ -275,8 +279,7 @@ app.post("/api/auth/callback", async (req, res) => {
       redirect_uri: REDIRECT_URI,
     });
     
-    // ИСПРАВЛЕНИЕ: Используем URL-encoded формат вместо JSON
-    // Shikimori ожидает данные в формате application/x-www-form-urlencoded
+    // Используем URL-encoded формат с повышенными таймаутами
     const params = new URLSearchParams();
     params.append('grant_type', 'authorization_code');
     params.append('client_id', CLIENT_ID);
@@ -285,11 +288,13 @@ app.post("/api/auth/callback", async (req, res) => {
     params.append('redirect_uri', REDIRECT_URI);
     
     const response = await axios.post("https://shikimori.one/oauth/token", params, {
-      timeout: 10000, // Добавляем таймаут 10 секунд
+      timeout: 30000, // Увеличиваем таймаут до 30 секунд
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      }
+        'Accept': 'application/json',
+        'User-Agent': 'AnimeRealm/1.0 (https://github.com/Migetsu/animelove)'
+      },
+      maxRedirects: 5
     });
 
     console.log("Получен ответ от Shikimori:", {
@@ -392,7 +397,7 @@ app.use((err, req, res, next) => {
 });
 
 // Запуск основного сервера
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {  // Используем 0.0.0.0 для привязки ко всем интерфейсам
   console.log(`
 🔥 Сервер запущен и доступен по адресу: http://localhost:${PORT}
 📝 Ожидание запросов на маршрут: http://localhost:${PORT}/auth/callback

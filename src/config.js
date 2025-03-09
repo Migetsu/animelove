@@ -38,10 +38,23 @@ if (isGitHubPages) {
 }
 
 // Конфигурация для Shikimori OAuth
+// ВАЖНО: ID и URI должны точно соответствовать настройкам в Shikimori
 const SHIKIMORI_CONFIG = {
   CLIENT_ID: 'XpCddxtIwd3GA26uhftF-EFxEaSXG-bsUosO9ll65mQ',
   REDIRECT_URI: AUTH_REDIRECT_URL
 };
+
+// Подробное логирование конфигурации
+console.log('=== Shikimori OAuth Config ===');
+console.log('CLIENT_ID:', SHIKIMORI_CONFIG.CLIENT_ID);
+console.log('REDIRECT_URI:', SHIKIMORI_CONFIG.REDIRECT_URI);
+console.log('Environment:', isProduction ? 'Production' : 'Development');
+console.log('Platform:', isGitHubPages ? 'GitHub Pages' : (isRender ? 'Render' : 'Local'));
+
+// ВАЖНО: Предупреждение, если конфигурация отличается от регистрации в Shikimori
+console.log('\n⚠️ ВАЖНО: REDIRECT_URI в Shikimori приложении должен быть настроен как:');
+console.log(SHIKIMORI_CONFIG.REDIRECT_URI);
+console.log('Проверьте настройки на https://shikimori.one/oauth/applications\n');
 
 export default {
   isProduction,

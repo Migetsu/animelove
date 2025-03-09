@@ -148,12 +148,19 @@ app.get("/auth/process", async (req, res) => {
         redirect_uri: REDIRECT_URI,
       });
       
-      const response = await axios.post("https://shikimori.one/oauth/token", {
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        code,
-        redirect_uri: REDIRECT_URI,
+      // ИСПРАВЛЕНИЕ: Используем URL-encoded формат вместо JSON
+      const params = new URLSearchParams();
+      params.append('grant_type', 'authorization_code');
+      params.append('client_id', CLIENT_ID);
+      params.append('client_secret', CLIENT_SECRET);
+      params.append('code', code);
+      params.append('redirect_uri', REDIRECT_URI);
+      
+      const response = await axios.post("https://shikimori.one/oauth/token", params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        }
       });
       
       console.log("Токен успешно получен, данные ответа:");
@@ -248,21 +255,73 @@ app.post("/api/auth/callback", async (req, res) => {
     console.log("Получен код авторизации:", code);
     console.log("Отправка запроса в Shikimori с redirect_uri:", REDIRECT_URI);
     
-    const response = await axios.post("https://shikimori.one/oauth/token", {
+    // Проверяем наличие необходимых данных
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error("ОШИБКА: Отсутствуют CLIENT_ID или CLIENT_SECRET в переменных окружения");
+      return res.status(500).json({ 
+        error: "Missing credentials",
+        details: "CLIENT_ID или CLIENT_SECRET не настроены. Запустите 'npm run setup-env' или обновите файл .env"
+      });
+    }
+    
+    // Логируем данные запроса (без секретов)
+    console.log("Параметры запроса к Shikimori:", {
       grant_type: "authorization_code",
       client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code,
+      client_secret: "***SECRET***",
+      code: code,
       redirect_uri: REDIRECT_URI,
     });
+    
+    // ИСПРАВЛЕНИЕ: Используем URL-encoded формат вместо JSON
+    // Shikimori ожидает данные в формате application/x-www-form-urlencoded
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+    params.append('code', code);
+    params.append('redirect_uri', REDIRECT_URI);
+    
+    const response = await axios.post("https://shikimori.one/oauth/token", params, {
+      timeout: 10000, // Добавляем таймаут 10 секунд
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
+      }
+    });
 
-    console.log("Получен ответ от Shikimori:", response.data);
+    console.log("Получен ответ от Shikimori:", {
+      status: response.status,
+      hasAccessToken: !!response.data?.access_token,
+      hasRefreshToken: !!response.data?.refresh_token,
+      expiresIn: response.data?.expires_in
+    });
+    
     res.json(response.data);
   } catch (error) {
-    console.error("OAuth error:", error.response?.data || error.message);
+    console.error("OAuth error:", error);
+    
+    // Подробная информация об ошибке
+    const errorDetail = {
+      message: error.message,
+      response: error.response ? {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      } : "No response received",
+      request: error.request ? "Request was sent" : "Request was not sent"
+    };
+    
+    console.error("Detailed error:", JSON.stringify(errorDetail, null, 2));
+    
     res.status(500).json({ 
       error: "Failed to fetch access token",
-      details: error.response?.data || error.message 
+      details: error.response?.data || error.message,
+      serverInfo: {
+        clientIdPresent: !!CLIENT_ID,
+        clientSecretPresent: !!CLIENT_SECRET,
+        redirectUri: REDIRECT_URI
+      }
     });
   }
 });

@@ -84,7 +84,11 @@ onMounted(async () => {
       console.log("Отправка запроса на:", tokenUrl);
       console.log("С параметрами:", { code });
       
-      const response = await axios.post(tokenUrl, { code });
+      // Добавляем таймаут для предотвращения быстрых отказов
+      const response = await axios.post(tokenUrl, { code }, { 
+        timeout: 10000, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
       
       if (!response.data || !response.data.access_token) {
         console.error("Ошибка: ответ сервера не содержит токен", response);
@@ -114,13 +118,20 @@ onMounted(async () => {
         response: apiError.response ? {
           status: apiError.response.status,
           statusText: apiError.response.statusText,
-          data: apiError.response.data
+          data: apiError.response.data,
+          headers: apiError.response.headers
         } : null,
         request: apiError.request ? "Запрос был отправлен, но ответ не получен" : null,
+        config: apiError.config ? {
+          url: apiError.config.url,
+          method: apiError.config.method,
+          headers: apiError.config.headers,
+          timeout: apiError.config.timeout
+        } : null
       };
       
       diagnosticInfo.value.apiError = errorDetails;
-      throw new Error(`Ошибка API: ${apiError.message}. ${apiError.response?.data?.error || ''}`);
+      throw new Error(`Ошибка API: ${apiError.message}. ${apiError.response?.data?.error || 'Проверьте CLIENT_SECRET в файле .env'}`);
     }
   } catch (err) {
     console.error("Ошибка авторизации:", err);

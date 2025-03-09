@@ -8,7 +8,7 @@
             </form>
             <div class="catalog__content">
                 <div class="catalog__content-list">
-                    <router-link :to="`/anime/1`" class="catalog__content-list-item">
+                    <router-link :to="`/`" class="catalog__content-list-item">
                         <img src="@/assets/images/introMiniImg.png" alt="">
                         <h3 class="catalog__content-list-item-title">Title</h3>
                         <p class="catalog__content-list-item-type">TV сериал</p>

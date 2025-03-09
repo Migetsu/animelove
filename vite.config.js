@@ -31,9 +31,18 @@ export default defineConfig(({ command, mode }) => {
     server: {
       port: 5173,
       strictPort: true,
-      // Настраиваем прокси для локальной разработки, если нужно
+      // Базовая конфигурация прокси для локальной разработки
       proxy: {
-        // '/api': 'http://localhost:3000'
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false
+        },
+        '/auth': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false
+        }
       }
     }
   }

@@ -25,21 +25,50 @@ exec(command, (error, stdout, stderr) => {
   console.log(`📋 Найдены процессы на порту ${PORT}:`);
   console.log(stdout);
 
-  // Извлекаем PID процесса
+  // Извлекаем PID процесса с улучшенной обработкой для Windows
   let pid;
   if (isWindows) {
-    // В Windows PID находится в последнем столбце
-    const matches = stdout.match(/\s+(\d+)\s*$/m);
-    pid = matches ? matches[1] : null;
+    // Улучшенный regex для Windows netstat вывода
+    // Ищем строки, которые содержат наш порт, и берем последнее число (PID)
+    const lines = stdout.split('\n').filter(line => line.includes(`:${PORT}`));
+    
+    if (lines.length > 0) {
+      // Берем первую строку с нужным портом
+      const line = lines[0];
+      console.log(`Анализ строки: ${line}`);
+      
+      // Разделяем строку на части по пробелам и ищем последний не-пустой элемент
+      const parts = line.trim().split(/\s+/);
+      if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        if (/^\d+$/.test(lastPart)) {
+          pid = lastPart;
+          console.log(`Найден PID: ${pid}`); // Добавлен лог для проверки
+        }
+      }
+    }
   } else {
     // В Unix/Linux/Mac PID обычно во втором столбце
     const matches = stdout.match(/\S+\s+(\d+)/);
     pid = matches ? matches[1] : null;
   }
 
-  if (!pid) {
-    console.error('❌ Не удалось определить PID процесса');
-    process.exit(1);
+  // Проверка на валидность PID
+  if (!pid || pid === '0' || isNaN(parseInt(pid))) {
+    console.error('❌ Не удалось определить корректный PID процесса');
+    console.error('Найденный PID:', pid);
+    
+    // Альтернативный подход - использовать npx kill-port
+    console.log('🔄 Попытка использовать встроенный kill-port...');
+    exec('npx kill-port 3000', (killPortError) => {
+      if (killPortError) {
+        console.error('❌ Не удалось освободить порт:', killPortError.message);
+      } else {
+        console.log('✅ Порт успешно освобожден через kill-port');
+      }
+      process.exit(killPortError ? 1 : 0);
+    });
+    return;
   }
 
   console.log(`🔪 Завершение процесса с PID: ${pid}`);

@@ -7,6 +7,13 @@
   </button>
   <div v-if="error" class="login-error">
     <p>{{ error }}</p>
+    <div v-if="showServerTip" class="login-server-tip">
+      <p>Сервер авторизации не запущен. Запустите его с помощью команды:</p>
+      <pre>npm run server</pre>
+      <button @click="retryWithServerStart" class="login-retry-button">
+        Запустить сервер и повторить
+      </button>
+    </div>
     <button v-if="showRetryButton" @click="login" class="login-retry-button">
       Попробовать снова
     </button>
@@ -14,18 +21,41 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import config from '@/config.js';
+import { isServerAvailable, openServerCommand, isDualServerMode } from '@/utils/serverChecker';
 
 const isLoading = ref(false);
 const statusMessage = ref('Подготовка...');
 const error = ref(null);
 const showRetryButton = ref(false);
+const showServerTip = ref(false);
+const isDualMode = ref(false);
+
+// Проверяем режим запуска при монтировании компонента
+onMounted(() => {
+  isDualMode.value = isDualServerMode();
+  
+  // Если запущен режим dual server, устанавливаем соответствующий флаг в localStorage
+  if (import.meta.env.VITE_DUAL_SERVER === 'true') {
+    window.localStorage.setItem('dualServerMode', 'true');
+    isDualMode.value = true;
+  }
+  
+  console.log('Режим двойного запуска:', isDualMode.value ? 'Включен' : 'Выключен');
+});
+
+async function retryWithServerStart() {
+  const { instructions } = openServerCommand();
+  alert(`${instructions}\n\nПосле запуска сервера нажмите "Попробовать снова"`);
+  showRetryButton.value = true;
+}
 
 async function login() {
   isLoading.value = true;
   error.value = null;
   showRetryButton.value = false;
+  showServerTip.value = false;
   
   try {
     const CLIENT_ID = config.SHIKIMORI_CONFIG.CLIENT_ID;
@@ -34,6 +64,32 @@ async function login() {
     console.log('Окружение:', config.isGitHubPages ? 'GitHub Pages' : (config.isRender ? 'Render' : 'Локальная разработка'));
     console.log('API URL:', config.API_URL);
     console.log('REDIRECT URI:', REDIRECT_URI);
+    
+    // Для локальной разработки проверяем, доступен ли сервер
+    if (config.isLocal) {
+      statusMessage.value = 'Проверка доступности сервера...';
+      
+      // Если запущен режим dual server, добавляем задержку и больше попыток
+      const retries = isDualMode.value ? 5 : 3;
+      const delay = isDualMode.value ? 3000 : 2000;
+      
+      // Если режим dual server, даем серверу дополнительное время на запуск
+      if (isDualMode.value) {
+        console.log('Запущен режим dual server, ожидаем запуск сервера...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      const serverAvailable = await isServerAvailable(config.API_URL, retries, delay);
+      
+      if (!serverAvailable) {
+        // Особое сообщение для режима dual server
+        if (isDualMode.value) {
+          throw new Error('Сервер авторизации не успел запуститься. Пожалуйста, подождите несколько секунд и повторите попытку.');
+        } else {
+          throw new Error('Сервер авторизации не запущен. Запустите команду "npm run server" или "npm run dev:all"');
+        }
+      }
+    }
     
     // Для GitHub Pages проверяем доступность Render API
     if (config.isGitHubPages) {
@@ -71,41 +127,6 @@ async function login() {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
-    // Для локальной разработки проверяем доступность локального сервера
-    else if (config.isLocal) {
-      statusMessage.value = 'Проверка доступности сервера...';
-      
-      try {
-        // Сначала пробуем обычный CORS-запрос
-        const response = await fetch(`${config.API_URL}/api/status`, { 
-          mode: 'cors',
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Сервер авторизации вернул статус ${response.status}`);
-        }
-        
-        console.log('Сервер отвечает через CORS');
-      } catch (corsError) {
-        console.warn('CORS ошибка, пробуем no-cors режим...', corsError);
-        error.value = 'Сервер авторизации недоступен. Запустите команду "npm run server"';
-        
-        try {
-          // Если CORS не работает, пробуем запрос без CORS
-          await fetch(config.API_URL, { 
-            mode: 'no-cors' 
-          });
-          
-          console.log('Сервер доступен (без CORS)');
-          error.value = null;
-        } catch (fetchError) {
-          console.error('Ошибка запроса:', fetchError);
-          error.value = 'Сервер авторизации не запущен или недоступен. Запустите команду "npm run server"';
-          throw new Error('Сервер авторизации не запущен или недоступен. Запустите команду "npm run server"');
-        }
-      }
-    }
     
     // Если мы дошли сюда, можно перейти к авторизации
     statusMessage.value = 'Перенаправление на Shikimori...';
@@ -122,6 +143,12 @@ async function login() {
   } catch (error) {
     console.error('Ошибка:', error);
     error.value = `Ошибка при авторизации: ${error.message}`;
+    
+    // Проверяем, связана ли ошибка с недоступностью сервера
+    if (error.message.includes('не запущен') || error.message.includes('не успел')) {
+      showServerTip.value = true;
+    }
+    
     showRetryButton.value = true;
     isLoading.value = false;
   }
@@ -160,6 +187,21 @@ async function login() {
   margin-top: 8px;
   font-size: 14px;
   max-width: 300px;
+}
+
+.login-server-tip {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #353535;
+  border-radius: 5px;
+}
+
+.login-server-tip pre {
+  background-color: #252525;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 5px 0;
+  overflow-x: auto;
 }
 
 .login-retry-button {

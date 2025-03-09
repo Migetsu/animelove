@@ -70,15 +70,24 @@ app.use((req, res, next) => {
 // Улучшенные настройки CORS для поддержки различных источников
 app.use(cors({
   origin: function (origin, callback) {
-    // Всегда разрешаем запросы с GitHub Pages, локальных хостов и без origin (для API запросов)
-    if (!origin || origin.includes('github.io') || 
-        origin.includes('localhost') || origin.includes('.onrender.com')) {
+    // Разрешаем все запросы без происхождения (полезно для некоторых инструментов)
+    if (!origin) {
+      callback(null, '*');
+      return;
+    }
+    
+    // Всегда разрешаем запросы с GitHub Pages, локальных хостов 
+    if (origin.includes('github.io') || 
+        origin.includes('localhost') || origin.includes('127.0.0.1') || 
+        origin.includes('.onrender.com')) {
+      console.log(`[CORS] Разрешен доступ для ${origin}`);
       callback(null, origin);
       return;
     }
 
     // В продакшне разрешаем все источники для простоты
     if (isProd) {
+      console.log(`[CORS] Продакшн-режим, разрешен доступ для ${origin}`);
       callback(null, origin);
       return;
     }
@@ -87,31 +96,39 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173', 
       'http://localhost:5174',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
     ];
     
-    console.log(`Запрос с origin: ${origin}`);
+    console.log(`[CORS] Запрос с origin: ${origin}`);
     
-    if (allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+    if (allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      console.log(`[CORS] Разрешен доступ для ${origin}`);
       callback(null, origin);
     } else {
+      console.log(`[CORS] Доступ разрешен с ограничениями для ${origin}`);
       callback(null, allowedOrigins[0]); 
     }
   },
   credentials: true,
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
   exposedHeaders: ['Access-Control-Allow-Origin'],
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // 24 часа
 }));
 
-// Явное добавление CORS заголовков
+// Явное добавление CORS заголовков для всех маршрутов
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
   
+  // Улучшенная обработка preflight запросов
   if (req.method === 'OPTIONS') {
+    console.log(`[CORS] Обработка preflight запроса для ${req.url}`);
     return res.status(204).end();
   }
   
@@ -238,14 +255,27 @@ app.get("/auth/callback", (req, res) => {
   }
 });
 
-// API статуса сервера
+// API статуса сервера - расширяем для проверки работы CORS
 app.get("/api/status", (req, res) => {
+  console.log(`[API] Запрос статуса сервера от ${req.headers.origin || 'неизвестного источника'}`);
+  
   res.json({ 
     status: "Server is running",
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
     render_url: RENDER_URL || process.env.RENDER_EXTERNAL_URL || 'Not set',
-    github_pages_url: GITHUB_PAGES_URL || 'Not set'
+    github_pages_url: GITHUB_PAGES_URL || 'Not set',
+    cors_origin: req.headers.origin || 'No origin header',
+    request_details: {
+      method: req.method,
+      path: req.path,
+      headers: {
+        host: req.headers.host,
+        origin: req.headers.origin,
+        referer: req.headers.referer,
+        'user-agent': req.headers['user-agent']
+      }
+    }
   });
 });
 

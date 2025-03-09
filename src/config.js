@@ -30,26 +30,19 @@ if (isGitHubPages) {
   BASE_PATH = '/';
   AUTH_REDIRECT_URL = '/auth/callback';
 } else {
-  // Локальная разработка
-  API_URL = 'http://localhost:3000';
+  // Локальная разработка - используем прокси через Vite
+  API_URL = ''; // Используем относительные URL для работы через прокси
   BASE_PATH = '/';
-  AUTH_REDIRECT_URL = `${API_URL}/auth/callback`;
+  AUTH_REDIRECT_URL = '/auth/callback';
 }
 
-// Конфигурация для Shikimori OAuth - убедимся, что Redirect URI корректно определен
+// Конфигурация для Shikimori OAuth
 const SHIKIMORI_CONFIG = {
   CLIENT_ID: 'XpCddxtIwd3GA26uhftF-EFxEaSXG-bsUosO9ll65mQ',
-  REDIRECT_URI: AUTH_REDIRECT_URL
+  REDIRECT_URI: isLocal 
+    ? "http://localhost:3000/auth/callback" // Для OAuth используем прямой URL сервера
+    : AUTH_REDIRECT_URL
 };
-
-// Только минимальное логирование в продакшене
-if (!isProduction) {
-  console.log('=== Shikimori OAuth Config ===');
-  console.log('CLIENT_ID:', SHIKIMORI_CONFIG.CLIENT_ID);
-  console.log('REDIRECT_URI:', SHIKIMORI_CONFIG.REDIRECT_URI);
-  console.log('Environment:', isProduction ? 'Production' : 'Development');
-  console.log('Platform:', isGitHubPages ? 'GitHub Pages' : (isRender ? 'Render' : 'Local'));
-}
 
 export default {
   isProduction,
@@ -60,5 +53,7 @@ export default {
   BASE_PATH,
   SHIKIMORI_CONFIG,
   GITHUB_PAGES_URL: `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}`,
-  RENDER_APP_URL: `https://${RENDER_APP_NAME}.onrender.com`
+  RENDER_APP_URL: `https://${RENDER_APP_NAME}.onrender.com`,
+  // Прямой URL сервера для особых случаев
+  DIRECT_SERVER_URL: 'http://localhost:3000'
 };

@@ -1,5 +1,5 @@
 <template>
-    <router-link class="more" :to="`/`">
+    <router-link class="more" :to="`${page}${id}`">
         <span class="more__span">Смотреть</span>
     </router-link>
 </template>

@@ -34,6 +34,7 @@ const app = express();
 
 // Определяем режим работы
 const isProd = process.env.NODE_ENV === 'production';
+// Обновлено: используем системный PORT от Render или наш порт по умолчанию
 const PORT = process.env.PORT || 3000;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
@@ -49,13 +50,14 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 }
 
 // Формируем redirect_uri в зависимости от окружения
+// Обновлено: исправление для корректной работы на Render
 const REDIRECT_URI = isProd 
-  ? `${RENDER_URL || "https://animerealm-api.onrender.com"}/auth/callback`
+  ? `${RENDER_URL || process.env.RENDER_EXTERNAL_URL || "https://animerealm-api.onrender.com"}/auth/callback`
   : "http://localhost:3000/auth/callback";
 
 console.log(`Режим: ${isProd ? 'Продакшн' : 'Разработка'}`);
 console.log(`REDIRECT_URI: ${REDIRECT_URI}`);
-console.log(`Render URL: ${RENDER_URL || 'Не определен'}`);
+console.log(`Render URL: ${RENDER_URL || process.env.RENDER_EXTERNAL_URL || 'Не определен'}`);
 console.log(`GitHub Pages URL: ${GITHUB_PAGES_URL || 'Не определен'}`);
 
 // Добавляем подробное логирование запросов
@@ -238,7 +240,7 @@ app.get("/api/status", (req, res) => {
     status: "Server is running",
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
-    render_url: RENDER_URL || 'Not set',
+    render_url: RENDER_URL || process.env.RENDER_EXTERNAL_URL || 'Not set',
     github_pages_url: GITHUB_PAGES_URL || 'Not set'
   });
 });

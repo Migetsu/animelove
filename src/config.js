@@ -12,10 +12,9 @@ const isRender = hostname.includes('onrender.com');
 const isLocal = !isProduction || hostname === 'localhost' || hostname === '127.0.0.1';
 
 // Название вашего приложения на Render и GitHub
-// Эти значения заменяются скриптом setup-env.js
-const RENDER_APP_NAME = 'animelove-api';
-const GITHUB_USERNAME = 'your-github-username';
-const REPO_NAME = 'animelove';  // Имя репозитория для GitHub Pages
+const RENDER_APP_NAME = 'animelove';
+const GITHUB_USERNAME = 'migetsu';
+const REPO_NAME = 'animelove';
 
 // Настройки для API и базовых URL
 let API_URL, BASE_PATH, AUTH_REDIRECT_URL;
@@ -38,23 +37,19 @@ if (isGitHubPages) {
 }
 
 // Конфигурация для Shikimori OAuth
-// ВАЖНО: ID и URI должны точно соответствовать настройкам в Shikimori
 const SHIKIMORI_CONFIG = {
   CLIENT_ID: 'XpCddxtIwd3GA26uhftF-EFxEaSXG-bsUosO9ll65mQ',
   REDIRECT_URI: AUTH_REDIRECT_URL
 };
 
-// Подробное логирование конфигурации
-console.log('=== Shikimori OAuth Config ===');
-console.log('CLIENT_ID:', SHIKIMORI_CONFIG.CLIENT_ID);
-console.log('REDIRECT_URI:', SHIKIMORI_CONFIG.REDIRECT_URI);
-console.log('Environment:', isProduction ? 'Production' : 'Development');
-console.log('Platform:', isGitHubPages ? 'GitHub Pages' : (isRender ? 'Render' : 'Local'));
-
-// ВАЖНО: Предупреждение, если конфигурация отличается от регистрации в Shikimori
-console.log('\n⚠️ ВАЖНО: REDIRECT_URI в Shikimori приложении должен быть настроен как:');
-console.log(SHIKIMORI_CONFIG.REDIRECT_URI);
-console.log('Проверьте настройки на https://shikimori.one/oauth/applications\n');
+// Только минимальное логирование в продакшене
+if (!isProduction) {
+  console.log('=== Shikimori OAuth Config ===');
+  console.log('CLIENT_ID:', SHIKIMORI_CONFIG.CLIENT_ID);
+  console.log('REDIRECT_URI:', SHIKIMORI_CONFIG.REDIRECT_URI);
+  console.log('Environment:', isProduction ? 'Production' : 'Development');
+  console.log('Platform:', isGitHubPages ? 'GitHub Pages' : (isRender ? 'Render' : 'Local'));
+}
 
 export default {
   isProduction,

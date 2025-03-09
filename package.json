@@ -5,15 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server-only.js",
+    "server": "node server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
-    "kill-server": "node src/backend/port-killer.js",
-    "start-server": "node start-server.js",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist",
     "build": "vite build",
     "preview": "vite preview",
-    "setup-env": "node setup-env.js",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "start": "node server.js"
   },
   "dependencies": {

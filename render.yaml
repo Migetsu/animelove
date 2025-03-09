@@ -4,7 +4,7 @@ services:
     env: node
     nodeVersion: 18
     plan: free
-    buildCommand: npm ci && npx vite build
+    buildCommand: npm i && npm run build
     startCommand: node server.js
     # Автоматическое развертывание при изменениях в репозитории
     repo: https://github.com/Migetsu/animelove.git

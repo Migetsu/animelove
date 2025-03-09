@@ -1,0 +1,51 @@
+{
+  "name": "animerealm",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server-only.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "kill-server": "node src/backend/port-killer.js",
+    "start-server": "node start-server.js",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
+    "build": "vite build",
+    "preview": "vite preview",
+    "setup-env": "node setup-env.js"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.6.0",
+    "@fortawesome/free-brands-svg-icons": "^6.6.0",
+    "@fortawesome/free-regular-svg-icons": "^6.6.0",
+    "@fortawesome/free-solid-svg-icons": "^6.6.0",
+    "@fortawesome/vue-fontawesome": "^3.0.8",
+    "aos": "^2.3.4",
+    "axios": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "element-plus": "^2.9.5",
+    "express": "^4.21.2",
+    "gh-pages": "^6.2.0",
+    "lodash": "^4.17.21",
+    "node-shikimori": "^2.0.2",
+    "pinia": "^2.1.7",
+    "scss": "^0.2.4",
+    "swiper": "^11.1.5",
+    "vue": "^3.4.29",
+    "vue-i18n": "^11.1.1",
+    "vue-lazyload": "^3.0.0",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "kill-port": "^2.0.1",
+    "node-sass": "^9.0.0",
+    "sass": "^1.77.8",
+    "sass-loader": "^14.2.1",
+    "vite": "^5.3.1"
+  }
+}

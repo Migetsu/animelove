@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: animelove-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node start-server.js
+    # Автоматическое развертывание при изменениях в репозитории
+    # Здесь будет использоваться ветка main из вашего GitHub репозитория
+    repo: https://github.com/your-github-username/animelove.git
+    branch: main
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ID
+        sync: false
+      - key: CLIENT_SECRET
+        sync: false
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          name: animelove-api
+          type: web
+          property: url
+      - key: GITHUB_PAGES_URL
+        value: https://your-github-username.github.io/animelove
+    # Настройка CORS для разрешения запросов с GitHub Pages
+    headers:
+      - path: /*
+        name: Access-Control-Allow-Origin
+        value: "*"
